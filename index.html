@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apps</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f7f5f2;
+            --ink: #1a1916;
+            --muted: #9a9690;
+            --accent: #c0392b;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.15rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 4rem 2rem;
+        }
+
+        header {
+            margin-bottom: 3.5rem;
+        }
+
+        h1 {
+            font-size: 0.75rem;
+            font-family: 'EB Garamond', serif;
+            font-weight: 400;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        ol {
+            list-style: none;
+            counter-reset: app-counter;
+        }
+
+        ol li {
+            counter-increment: app-counter;
+            display: flex;
+            align-items: baseline;
+            gap: 1.2rem;
+            padding: 0.65rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+            opacity: 0;
+            animation: fadein 0.4s ease forwards;
+        }
+
+        ol li:first-child {
+            border-top: 1px solid rgba(0, 0, 0, 0.07);
+        }
+
+        ol li:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        ol li:nth-child(2) {
+            animation-delay: 0.10s;
+        }
+
+        ol li:nth-child(3) {
+            animation-delay: 0.15s;
+        }
+
+        ol li:nth-child(4) {
+            animation-delay: 0.20s;
+        }
+
+        ol li:nth-child(5) {
+            animation-delay: 0.25s;
+        }
+
+        ol li:nth-child(6) {
+            animation-delay: 0.30s;
+        }
+
+        ol li:nth-child(7) {
+            animation-delay: 0.35s;
+        }
+
+        ol li:nth-child(8) {
+            animation-delay: 0.40s;
+        }
+
+        ol li::before {
+            content: counter(app-counter, decimal-leading-zero);
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            min-width: 1.8rem;
+            flex-shrink: 0;
+        }
+
+        a {
+            color: var(--ink);
+            text-decoration: none;
+            transition: color 0.15s ease;
+        }
+
+        a:hover {
+            color: var(--accent);
+        }
+
+        footer {
+            margin-top: auto;
+            padding-top: 3rem;
+            font-size: 0.72rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        @keyframes fadein {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>AI Apps</h1>
+    </header>
+
+    <ol>
+        <li><a href="collage">Collage</a></li>
+        <!-- <li><a href="#">App Two</a></li> -->
+        <!-- <li><a href="#">App Three</a></li> -->
+    </ol>
+
+    <footer>Built with AI</footer>
+</body>
+
+</html>
