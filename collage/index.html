@@ -244,23 +244,6 @@
       cursor: not-allowed;
     }
 
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-    }
-
-    .btn-primary:hover {
-      background: #333;
-      border-color: #333;
-    }
-
-    .btn-primary:disabled {
-      background: var(--border);
-      border-color: var(--border);
-      color: var(--muted);
-    }
-
     .btn-group {
       display: flex;
       flex-direction: column;
@@ -368,6 +351,8 @@
       height: 24px;
       border-radius: 50%;
       background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      background-position: center;
+      background-size: 48px 48px;
       cursor: pointer;
       border: 2px solid transparent;
       flex-shrink: 0;
@@ -410,6 +395,7 @@
         <div class="control-row" style="margin-bottom:12px;">
           <label>Layout style <span id="layout-val"></span></label>
           <select id="layout-select">
+            <option value="square">Square</option>
             <option value="grid">Grid</option>
             <option value="masonry">Masonry</option>
             <option value="strip-h">Horizontal strip</option>
@@ -443,7 +429,6 @@
 
       <div class="btn-group">
         <button class="btn" id="randomize-btn" disabled>⇌ &nbsp;Randomize</button>
-        <button class="btn btn-primary" id="generate-btn" disabled>Generate collage</button>
         <button class="btn" id="download-btn" disabled>↓ &nbsp;Download</button>
       </div>
     </aside>
@@ -465,7 +450,6 @@
     const borderSlider = document.getElementById('border-width');
     const borderVal = document.getElementById('border-val');
     const layoutSelect = document.getElementById('layout-select');
-    const generateBtn = document.getElementById('generate-btn');
     const randomizeBtn = document.getElementById('randomize-btn');
     const downloadBtn = document.getElementById('download-btn');
     const canvas = document.getElementById('collage-canvas');
@@ -533,7 +517,6 @@
 
     function updateButtons() {
       const has = images.length > 0;
-      generateBtn.disabled = !has;
       randomizeBtn.disabled = !has;
     }
 
@@ -576,23 +559,21 @@
     }
 
     // --- Generate ---
-    generateBtn.addEventListener('click', generateCollage);
-
     async function generateCollage() {
       if (!images.length) return;
       generatingMsg.classList.add('active');
       emptyState.style.display = 'none';
       canvas.style.display = 'none';
-      await new Promise(r => setTimeout(r, 30)); // let UI update
+      await new Promise(r => setTimeout(r, 30));
 
       const gap = parseInt(borderSlider.value);
       const layout = layoutSelect.value;
       const imgs = order.map(i => images[i].img);
-
-      const TARGET = 1200; // canvas width
+      const TARGET = 1200;
 
       if (layout === 'grid') drawGrid(imgs, gap, TARGET);
       else if (layout === 'masonry') drawMasonry(imgs, gap, TARGET);
+      else if (layout === 'square') drawSquare(imgs, gap, TARGET);
       else if (layout === 'strip-h') drawStripH(imgs, gap, TARGET);
       else if (layout === 'strip-v') drawStripV(imgs, gap, TARGET);
 
@@ -612,8 +593,6 @@
       const n = imgs.length;
       const cols = Math.ceil(Math.sqrt(n));
       const rows = Math.ceil(n / cols);
-
-      // Base cell dimensions
       const cellW = Math.floor((W - gap * (cols + 1)) / cols);
       const avgAspect = imgs.reduce((s, img) => s + img.naturalWidth / img.naturalHeight, 0) / n;
       const cellH = Math.round(cellW / avgAspect);
@@ -628,7 +607,6 @@
         const isLastRow = row === rows - 1;
 
         if (isLastRow && lastRowCount < cols) {
-          // Stretch images to fill the full width of the last row
           const usable = W - gap * (lastRowCount + 1);
           const w = Math.floor(usable / lastRowCount);
           const posInRow = idx - lastRowStart;
@@ -639,7 +617,7 @@
           drawImageCover(img, x, y, actualW, cellH);
         } else {
           const col = idx % cols;
-          const isLastInRow = col === cols - 1 || idx === n - 1;
+          const isLastInRow = col === cols - 1;
           const x = gap + col * (cellW + gap);
           const actualW = isLastInRow ? (W - gap - x) : cellW;
           const y = gap + row * (cellH + gap);
@@ -654,13 +632,9 @@
       const colHeights = new Array(cols).fill(gap);
 
       imgs.forEach(img => {
-        // shortest column
         const col = colHeights.indexOf(Math.min(...colHeights));
         const aspect = img.naturalWidth / img.naturalHeight;
         const h = Math.round(colW / aspect);
-        const x = gap + col * (colW + gap);
-        const y = colHeights[col];
-        // We'll collect rects first, draw after computing total height
         colHeights[col] += h + gap;
       });
 
@@ -679,33 +653,184 @@
       });
     }
 
-    function drawStripH(imgs, gap, W) {
+    // --- Square layout ---
+    // Packs photos into an N×N cell grid (N = smallest int where N² ≥ n).
+    // Each photo is randomly assigned a colSpan and rowSpan (1 or 2 cells),
+    // placed greedily into the first free position. Any leftover cells are
+    // merged into the preceding photo so the grid is always fully covered.
+    function drawSquare(imgs, gap, W) {
       const n = imgs.length;
-      const CELL_H = Math.round((W - gap * (n + 1)) / n);
-      // Each image gets equal height, width proportional
+      // Minimum N such that N² gives enough room for n photos with possible 2×2 spans
+      // Start at ceil(sqrt(n)) and grow if packing fails
+      let N = Math.max(2, Math.ceil(Math.sqrt(n)));
+
+      let rects = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        rects = packGrid(imgs, N);
+        if (rects) break;
+        N++;
+      }
+      if (!rects) {
+        // Fallback: one photo per cell, plain grid
+        N = Math.ceil(Math.sqrt(n));
+        rects = plainGrid(imgs, N);
+      }
+
+      const cellSize = Math.floor((W - gap * (N + 1)) / N);
+      const H = W; // square canvas
+      fillCanvas(W, H);
+
+      rects.forEach(({ img, c, r, cspan, rspan }) => {
+        const x = gap + c * (cellSize + gap);
+        const y = gap + r * (cellSize + gap);
+        // Stretch rightmost/bottommost cells to absorb rounding pixels
+        const x2 = (c + cspan === N) ? (W - gap) : (gap + (c + cspan) * (cellSize + gap) - gap);
+        const y2 = (r + rspan === N) ? (H - gap) : (gap + (r + rspan) * (cellSize + gap) - gap);
+        drawImageCover(img, x, y, x2 - x, y2 - y);
+      });
+    }
+
+    function packGrid(imgs, N) {
+      // grid[r][c] = true if occupied
+      const grid = Array.from({ length: N }, () => new Array(N).fill(false));
+      const rects = [];
+      let imgIdx = 0;
+
+      const firstFree = () => {
+        for (let r = 0; r < N; r++)
+          for (let c = 0; c < N; c++)
+            if (!grid[r][c]) return [r, c];
+        return null;
+      };
+
+      const canPlace = (r, c, cs, rs) => {
+        if (r + rs > N || c + cs > N) return false;
+        for (let dr = 0; dr < rs; dr++)
+          for (let dc = 0; dc < cs; dc++)
+            if (grid[r + dr][c + dc]) return false;
+        return true;
+      };
+
+      const place = (r, c, cs, rs, img) => {
+        for (let dr = 0; dr < rs; dr++)
+          for (let dc = 0; dc < cs; dc++)
+            grid[r + dr][c + dc] = true;
+        rects.push({ img, c, r, cspan: cs, rspan: rs });
+      };
+
+      // Count free cells to know if we have room
+      const freeCells = () => grid.flat().filter(v => !v).length;
+
+      while (imgIdx < imgs.length) {
+        const pos = firstFree();
+        if (!pos) return null; // no room left — need bigger N
+
+        const [r, c] = pos;
+        const remaining = imgs.length - imgIdx;
+        const free = freeCells();
+
+        // How much room can this photo take?
+        // Prefer 2×2 or 2×1 or 1×2 randomly, but only if enough free cells remain
+        // (we need at least 1 cell left per remaining photo after this one)
+        const options = [];
+        [[2, 2], [2, 1], [1, 2], [1, 1]].forEach(([cs, rs]) => {
+          if (!canPlace(r, c, cs, rs)) return;
+          const cellsUsed = cs * rs;
+          // After placing this, need (remaining-1) more cells for the rest
+          if (free - cellsUsed >= remaining - 1) {
+            options.push([cs, rs]);
+          }
+        });
+
+        if (options.length === 0) return null;
+
+        // Weighted random: prefer bigger spans for visual variety
+        const weights = options.map(([cs, rs]) => cs * rs);
+        const totalW = weights.reduce((a, b) => a + b, 0);
+        let rand = Math.random() * totalW;
+        let chosen = options[0];
+        for (let i = 0; i < options.length; i++) {
+          rand -= weights[i];
+          if (rand <= 0) { chosen = options[i]; break; }
+        }
+
+        place(r, c, chosen[0], chosen[1], imgs[imgIdx]);
+        imgIdx++;
+      }
+
+      // Fill any leftover cells by expanding the last rect that touches them
+      let pos;
+      while ((pos = firstFree())) {
+        const [r, c] = pos;
+        // Find an adjacent placed rect to absorb this cell
+        let absorbed = false;
+        for (const rect of rects) {
+          // Try expanding right
+          if (rect.r === r && rect.c + rect.cspan === c && rect.r + rect.rspan > r) {
+            rect.cspan++; grid[r][c] = true; absorbed = true; break;
+          }
+          // Try expanding down
+          if (rect.c === c && rect.r + rect.rspan === r && rect.c + rect.cspan > c) {
+            rect.rspan++; grid[r][c] = true; absorbed = true; break;
+          }
+        }
+        if (!absorbed) {
+          // Place a dummy extension on any rect that borders this cell
+          const [pr, pc] = [r > 0 ? r - 1 : r, c > 0 ? c - 1 : c];
+          const rect = rects.find(rect =>
+            pc >= rect.c && pc < rect.c + rect.cspan &&
+            pr >= rect.r && pr < rect.r + rect.rspan
+          );
+          if (rect) {
+            if (pc < c) rect.cspan = Math.max(rect.cspan, c - rect.c + 1);
+            if (pr < r) rect.rspan = Math.max(rect.rspan, r - rect.r + 1);
+            grid[r][c] = true;
+          } else {
+            return null; // give up, try larger N
+          }
+        }
+      }
+
+      return rects;
+    }
+
+    function plainGrid(imgs, N) {
+      // Simple fallback: 1×1 per photo
+      return imgs.map((img, i) => ({
+        img, c: i % N, r: Math.floor(i / N), cspan: 1, rspan: 1
+      }));
+    }
+
+    function drawStripH(imgs, gap, W) {
       const aspects = imgs.map(img => img.naturalWidth / img.naturalHeight);
       const totalAspect = aspects.reduce((a, b) => a + b, 0);
-      const usableW = W - gap * (n + 1);
+      const usableW = W - gap * (imgs.length + 1);
       const widths = aspects.map(a => Math.round((a / totalAspect) * usableW));
-      const H = Math.round(W / totalAspect) + gap * 2;
-      const cellH = H - gap * 2;
+      const cellH = Math.round(W / totalAspect);
+      const H = cellH + gap * 2;
       fillCanvas(W, H);
       let x = gap;
       imgs.forEach((img, i) => {
-        drawImageCover(img, x, gap, widths[i], cellH);
+        const isLast = i === imgs.length - 1;
+        const w = isLast ? (W - gap - x) : widths[i];
+        drawImageCover(img, x, gap, w, cellH);
         x += widths[i] + gap;
       });
     }
 
     function drawStripV(imgs, gap, W) {
-      const n = imgs.length;
-      const cellW = Math.floor((W - gap * (n + 1)) / n);
-      const cellH = Math.round(cellW * 1.3);
-      const H = cellH + gap * 2;
+      // Fixed width canvas; each image gets equal height, stacked vertically
+      const cellW = W - gap * 2;
+      const aspects = imgs.map(img => img.naturalWidth / img.naturalHeight);
+      // Use a reasonable fixed height per strip based on a 16:9-ish slice
+      const cellH = Math.round(cellW / 2.5);
+      const H = gap * (imgs.length + 1) + cellH * imgs.length;
       fillCanvas(W, H);
       imgs.forEach((img, i) => {
-        const x = gap + i * (cellW + gap);
-        drawImageCover(img, x, gap, cellW, cellH);
+        const y = gap + i * (cellH + gap);
+        const isLast = i === imgs.length - 1;
+        const h = isLast ? (H - gap - y) : cellH;
+        drawImageCover(img, gap, y, cellW, h);
       });
     }
 
