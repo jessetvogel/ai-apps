@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collage</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400&display=swap');
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --text: #1a1a1a;
+      --muted: #9a9a8e;
+      --border: #e0dfd8;
+      --accent: #1a1a1a;
+      --gap: 24px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 36px var(--gap) 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-family: 'DM Mono', monospace;
+      font-weight: 300;
+      font-size: 15px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    header span {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      height: calc(100vh - 73px);
+    }
+
+    /* SIDEBAR */
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: transparent;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    .upload-zone p {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .upload-zone p strong {
+      color: var(--text);
+      font-weight: 400;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    /* Thumbnails */
+    .thumb-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .thumb {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 2px;
+      display: block;
+      opacity: 1;
+      transition: opacity 0.15s;
+    }
+
+    .thumb-wrap {
+      position: relative;
+    }
+
+    .thumb-wrap:hover .thumb-remove {
+      opacity: 1;
+    }
+
+    .thumb-remove {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 16px;
+      height: 16px;
+      background: rgba(0, 0, 0, 0.6);
+      border: none;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 10px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    /* Controls */
+    .control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-row label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .control-row label span {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 1px;
+      background: var(--border);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 7px 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 300;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9a8e' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      background: transparent;
+      color: var(--text);
+    }
+
+    .btn:hover {
+      background: var(--border);
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: #333;
+      border-color: #333;
+    }
+
+    .btn-primary:disabled {
+      background: var(--border);
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    /* CANVAS AREA */
+    .canvas-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 32px;
+      overflow: auto;
+      position: relative;
+    }
+
+    .empty-state {
+      text-align: center;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .empty-state .big {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--border);
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    #collage-canvas {
+      display: none;
+      box-shadow: 0 2px 40px rgba(0, 0, 0, 0.08);
+      max-width: 100%;
+      max-height: calc(100vh - 140px);
+      object-fit: contain;
+    }
+
+    .generating {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+      display: none;
+    }
+
+    .generating.active {
+      display: block;
+    }
+
+    /* Color picker for bg */
+    .color-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.15s;
+      flex-shrink: 0;
+    }
+
+    .color-swatch:hover {
+      transform: scale(1.1);
+    }
+
+    .color-swatch.active {
+      border-color: var(--accent);
+    }
+
+    .color-input-wrap {
+      position: relative;
+      width: 24px;
+      height: 24px;
+    }
+
+    .color-input-wrap input[type=color] {
+      opacity: 0;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      border: none;
+    }
+
+    .color-custom-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+      cursor: pointer;
+      border: 2px solid transparent;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+
+    .color-custom-btn:hover {
+      transform: scale(1.1);
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Collage</h1>
+    <span>photo collage maker</span>
+  </header>
+
+  <main>
+    <aside>
+      <div>
+        <div class="section-label">Photos</div>
+        <div class="upload-zone" id="upload-zone">
+          <p><strong>Drop photos here</strong><br>or click to browse</p>
+        </div>
+        <input type="file" id="file-input" multiple accept="image/*">
+        <div class="thumb-grid" id="thumb-grid" style="margin-top:10px;"></div>
+      </div>
+
+      <hr class="divider">
+
+      <div>
+        <div class="section-label">Layout</div>
+        <div class="control-row" style="margin-bottom:12px;">
+          <label>Layout style <span id="layout-val"></span></label>
+          <select id="layout-select">
+            <option value="grid">Grid</option>
+            <option value="masonry">Masonry</option>
+            <option value="strip-h">Horizontal strip</option>
+            <option value="strip-v">Vertical strip</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label>Border width <span id="border-val">16px</span></label>
+          <input type="range" id="border-width" min="0" max="60" value="16" step="2">
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div>
+        <div class="section-label">Background</div>
+        <div class="color-row" id="color-swatches">
+          <div class="color-swatch active" style="background:#ffffff;" data-color="#ffffff"></div>
+          <div class="color-swatch" style="background:#f5f4f0;" data-color="#f5f4f0"></div>
+          <div class="color-swatch" style="background:#1a1a1a;" data-color="#1a1a1a"></div>
+          <div class="color-swatch" style="background:#e8e0d0;" data-color="#e8e0d0"></div>
+          <div class="color-swatch" style="background:#d0dce8;" data-color="#d0dce8"></div>
+          <div class="color-input-wrap" title="Custom color">
+            <div class="color-custom-btn"></div>
+            <input type="color" id="custom-color" value="#ffffff">
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="btn-group">
+        <button class="btn" id="randomize-btn" disabled>⇌ &nbsp;Randomize</button>
+        <button class="btn btn-primary" id="generate-btn" disabled>Generate collage</button>
+        <button class="btn" id="download-btn" disabled>↓ &nbsp;Download</button>
+      </div>
+    </aside>
+
+    <div class="canvas-area" id="canvas-area">
+      <div class="empty-state" id="empty-state">
+        <div class="big">⊞</div>
+        <p>Upload photos to get started.<br>Your collage will appear here.</p>
+      </div>
+      <div class="generating" id="generating-msg">Composing…</div>
+      <canvas id="collage-canvas"></canvas>
+    </div>
+  </main>
+
+  <script>
+    const uploadZone = document.getElementById('upload-zone');
+    const fileInput = document.getElementById('file-input');
+    const thumbGrid = document.getElementById('thumb-grid');
+    const borderSlider = document.getElementById('border-width');
+    const borderVal = document.getElementById('border-val');
+    const layoutSelect = document.getElementById('layout-select');
+    const generateBtn = document.getElementById('generate-btn');
+    const randomizeBtn = document.getElementById('randomize-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const canvas = document.getElementById('collage-canvas');
+    const ctx = canvas.getContext('2d');
+    const emptyState = document.getElementById('empty-state');
+    const generatingMsg = document.getElementById('generating-msg');
+    const swatches = document.querySelectorAll('.color-swatch');
+    const customColorInput = document.getElementById('custom-color');
+
+    let images = []; // {img, url, name}
+    let bgColor = '#ffffff';
+    let order = []; // indices into images[]
+
+    // --- Upload ---
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+    uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+    fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+
+    function handleFiles(files) {
+      const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
+      arr.forEach(file => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          images.push({ img, url, name: file.name });
+          order = images.map((_, i) => i);
+          renderThumbs();
+          updateButtons();
+          if (images.length >= 1) autoGenerate();
+        };
+        img.src = url;
+      });
+      fileInput.value = '';
+    }
+
+    function renderThumbs() {
+      thumbGrid.innerHTML = '';
+      images.forEach((item, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'thumb-wrap';
+        const img = document.createElement('img');
+        img.src = item.url;
+        img.className = 'thumb';
+        const btn = document.createElement('button');
+        btn.className = 'thumb-remove';
+        btn.innerHTML = '×';
+        btn.title = 'Remove';
+        btn.addEventListener('click', () => removeImage(i));
+        wrap.append(img, btn);
+        thumbGrid.appendChild(wrap);
+      });
+    }
+
+    function removeImage(i) {
+      URL.revokeObjectURL(images[i].url);
+      images.splice(i, 1);
+      order = images.map((_, j) => j);
+      renderThumbs();
+      updateButtons();
+      if (images.length >= 1) autoGenerate();
+      else { canvas.style.display = 'none'; emptyState.style.display = ''; downloadBtn.disabled = true; }
+    }
+
+    function updateButtons() {
+      const has = images.length > 0;
+      generateBtn.disabled = !has;
+      randomizeBtn.disabled = !has;
+    }
+
+    function autoGenerate() { generateCollage(); }
+
+    // --- Controls ---
+    borderSlider.addEventListener('input', () => {
+      borderVal.textContent = borderSlider.value + 'px';
+      if (images.length) autoGenerate();
+    });
+    layoutSelect.addEventListener('change', () => { if (images.length) autoGenerate(); });
+
+    // --- Color ---
+    swatches.forEach(s => {
+      s.addEventListener('click', () => {
+        swatches.forEach(x => x.classList.remove('active'));
+        s.classList.add('active');
+        bgColor = s.dataset.color;
+        if (images.length) autoGenerate();
+      });
+    });
+    customColorInput.addEventListener('input', () => {
+      swatches.forEach(x => x.classList.remove('active'));
+      bgColor = customColorInput.value;
+      if (images.length) autoGenerate();
+    });
+
+    // --- Randomize ---
+    randomizeBtn.addEventListener('click', () => {
+      order = shuffle([...order]);
+      if (images.length) autoGenerate();
+    });
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // --- Generate ---
+    generateBtn.addEventListener('click', generateCollage);
+
+    async function generateCollage() {
+      if (!images.length) return;
+      generatingMsg.classList.add('active');
+      emptyState.style.display = 'none';
+      canvas.style.display = 'none';
+      await new Promise(r => setTimeout(r, 30)); // let UI update
+
+      const gap = parseInt(borderSlider.value);
+      const layout = layoutSelect.value;
+      const imgs = order.map(i => images[i].img);
+
+      const TARGET = 1200; // canvas width
+
+      if (layout === 'grid') drawGrid(imgs, gap, TARGET);
+      else if (layout === 'masonry') drawMasonry(imgs, gap, TARGET);
+      else if (layout === 'strip-h') drawStripH(imgs, gap, TARGET);
+      else if (layout === 'strip-v') drawStripV(imgs, gap, TARGET);
+
+      generatingMsg.classList.remove('active');
+      canvas.style.display = 'block';
+      downloadBtn.disabled = false;
+    }
+
+    function fillCanvas(w, h) {
+      canvas.width = w;
+      canvas.height = h;
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    function drawGrid(imgs, gap, W) {
+      const n = imgs.length;
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+
+      // Base cell dimensions
+      const cellW = Math.floor((W - gap * (cols + 1)) / cols);
+      const avgAspect = imgs.reduce((s, img) => s + img.naturalWidth / img.naturalHeight, 0) / n;
+      const cellH = Math.round(cellW / avgAspect);
+      const H = gap * (rows + 1) + cellH * rows;
+      fillCanvas(W, H);
+
+      const lastRowStart = (rows - 1) * cols;
+      const lastRowCount = n - lastRowStart;
+
+      imgs.forEach((img, idx) => {
+        const row = Math.floor(idx / cols);
+        const isLastRow = row === rows - 1;
+
+        if (isLastRow && lastRowCount < cols) {
+          // Stretch images to fill the full width of the last row
+          const usable = W - gap * (lastRowCount + 1);
+          const w = Math.floor(usable / lastRowCount);
+          const posInRow = idx - lastRowStart;
+          const isLastCell = posInRow === lastRowCount - 1;
+          const x = gap + posInRow * (w + gap);
+          const actualW = isLastCell ? (W - gap - x) : w;
+          const y = gap + row * (cellH + gap);
+          drawImageCover(img, x, y, actualW, cellH);
+        } else {
+          const col = idx % cols;
+          const isLastInRow = col === cols - 1 || idx === n - 1;
+          const x = gap + col * (cellW + gap);
+          const actualW = isLastInRow ? (W - gap - x) : cellW;
+          const y = gap + row * (cellH + gap);
+          drawImageCover(img, x, y, actualW, cellH);
+        }
+      });
+    }
+
+    function drawMasonry(imgs, gap, W) {
+      const cols = Math.min(imgs.length, Math.ceil(Math.sqrt(imgs.length)));
+      const colW = Math.floor((W - gap * (cols + 1)) / cols);
+      const colHeights = new Array(cols).fill(gap);
+
+      imgs.forEach(img => {
+        // shortest column
+        const col = colHeights.indexOf(Math.min(...colHeights));
+        const aspect = img.naturalWidth / img.naturalHeight;
+        const h = Math.round(colW / aspect);
+        const x = gap + col * (colW + gap);
+        const y = colHeights[col];
+        // We'll collect rects first, draw after computing total height
+        colHeights[col] += h + gap;
+      });
+
+      const totalH = Math.max(...colHeights);
+      fillCanvas(W, totalH);
+
+      const colH2 = new Array(cols).fill(gap);
+      imgs.forEach(img => {
+        const col = colH2.indexOf(Math.min(...colH2));
+        const aspect = img.naturalWidth / img.naturalHeight;
+        const h = Math.round(colW / aspect);
+        const x = gap + col * (colW + gap);
+        const y = colH2[col];
+        drawImageCover(img, x, y, colW, h);
+        colH2[col] += h + gap;
+      });
+    }
+
+    function drawStripH(imgs, gap, W) {
+      const n = imgs.length;
+      const CELL_H = Math.round((W - gap * (n + 1)) / n);
+      // Each image gets equal height, width proportional
+      const aspects = imgs.map(img => img.naturalWidth / img.naturalHeight);
+      const totalAspect = aspects.reduce((a, b) => a + b, 0);
+      const usableW = W - gap * (n + 1);
+      const widths = aspects.map(a => Math.round((a / totalAspect) * usableW));
+      const H = Math.round(W / totalAspect) + gap * 2;
+      const cellH = H - gap * 2;
+      fillCanvas(W, H);
+      let x = gap;
+      imgs.forEach((img, i) => {
+        drawImageCover(img, x, gap, widths[i], cellH);
+        x += widths[i] + gap;
+      });
+    }
+
+    function drawStripV(imgs, gap, W) {
+      const n = imgs.length;
+      const cellW = Math.floor((W - gap * (n + 1)) / n);
+      const cellH = Math.round(cellW * 1.3);
+      const H = cellH + gap * 2;
+      fillCanvas(W, H);
+      imgs.forEach((img, i) => {
+        const x = gap + i * (cellW + gap);
+        drawImageCover(img, x, gap, cellW, cellH);
+      });
+    }
+
+    function drawImageCover(img, x, y, w, h) {
+      const srcAspect = img.naturalWidth / img.naturalHeight;
+      const dstAspect = w / h;
+      let sx, sy, sw, sh;
+      if (srcAspect > dstAspect) {
+        sh = img.naturalHeight;
+        sw = Math.round(sh * dstAspect);
+        sx = Math.round((img.naturalWidth - sw) / 2);
+        sy = 0;
+      } else {
+        sw = img.naturalWidth;
+        sh = Math.round(sw / dstAspect);
+        sx = 0;
+        sy = Math.round((img.naturalHeight - sh) / 2);
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    // --- Download ---
+    downloadBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'collage.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+
+</html>
